@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GEX TERMINAL // AAPL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d0a;
+    --bg-2: #111611;
+    --bg-3: #161d16;
+    --grid: #1f2a1f;
+    --phosphor: #4ade80;
+    --phosphor-dim: #166534;
+    --amber: #fbbf24;
+    --amber-dim: #78350f;
+    --red: #f87171;
+    --red-dim: #7f1d1d;
+    --text: #d4e8d4;
+    --text-dim: #6b7d6b;
+    --text-muted: #4a5a4a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at top, rgba(74, 222, 128, 0.04), transparent 50%),
+      linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.4) 100%);
+    overflow-x: hidden;
+  }
+
+  /* Subtle scanline effect */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(74, 222, 128, 0.015) 2px,
+      rgba(74, 222, 128, 0.015) 3px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  /* Header */
+  .header {
+    border-bottom: 1px solid var(--grid);
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    align-items: end;
+  }
+
+  .header-left .eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--phosphor);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .header-left h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(48px, 8vw, 96px);
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    color: var(--text);
+  }
+
+  .header-left h1 .accent {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--phosphor);
+  }
+
+  .header-meta {
+    text-align: right;
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.8;
+  }
+
+  .header-meta .live {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--amber);
+  }
+
+  .header-meta .live::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 8px var(--amber);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Top stats row */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0;
+    margin-bottom: 40px;
+    border: 1px solid var(--grid);
+    background: var(--bg-2);
+  }
+
+  .stat {
+    padding: 20px 24px;
+    border-right: 1px solid var(--grid);
+    position: relative;
+  }
+
+  .stat:last-child { border-right: none; }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .stat-value.phosphor { color: var(--phosphor); }
+  .stat-value.amber { color: var(--amber); }
+  .stat-value.red { color: var(--red); }
+
+  .stat-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Section labels */
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    margin-top: 40px;
+  }
+
+  .section-label .num {
+    font-size: 11px;
+    color: var(--phosphor);
+    letter-spacing: 0.2em;
+  }
+
+  .section-label .title {
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  .section-label .line {
+    flex: 1;
+    height: 1px;
+    background: var(--grid);
+  }
+
+  /* Chart */
+  .chart-wrap {
+    background: var(--bg-2);
+    border: 1px solid var(--grid);
+    padding: 24px;
+    position: relative;
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 16px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .chart-header .legend {
+    display: flex;
+    gap: 16px;
+  }
+
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .legend-swatch {
+    width: 12px;
+    height: 2px;
+  }
+
+  #chart-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  /* Strike Table */
+  .table-wrap {
+    background: var(--bg-2);
+    border: 1px solid var(--grid);
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  thead th {
+    padding: 12px 16px;
+    text-align: right;
+    font-weight: 500;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--grid);
+    background: var(--bg-3);
+  }
+
+  thead th:first-child { text-align: left; }
+
+  tbody td {
+    padding: 10px 16px;
+    text-align: right;
+    border-bottom: 1px solid var(--grid);
+    font-variant-numeric: tabular-nums;
+  }
+
+  tbody td:first-child {
+    text-align: left;
+    color: var(--text);
+  }
+
+  tbody tr:hover {
+    background: rgba(74, 222, 128, 0.03);
+  }
+
+  tbody tr.spot-row {
+    background: rgba(74, 222, 128, 0.06);
+    border-left: 2px solid var(--phosphor);
+  }
+
+  tbody tr.spot-row td:first-child {
+    color: var(--phosphor);
+    font-weight: 500;
+  }
+
+  tbody tr.call-wall-row td:first-child::after {
+    content: ' • CALL WALL';
+    color: var(--phosphor);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+  }
+
+  tbody tr.put-wall-row td:first-child::after {
+    content: ' • PUT WALL';
+    color: var(--red);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+  }
+
+  tbody tr.flip-row td:first-child::after {
+    content: ' • GAMMA FLIP';
+    color: var(--amber);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+  }
+
+  .pos { color: var(--phosphor); }
+  .neg { color: var(--red); }
+  .dim { color: var(--text-dim); }
+
+  /* Trade thesis card */
+  .thesis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1px;
+    background: var(--grid);
+    border: 1px solid var(--grid);
+  }
+
+  .thesis-card {
+    background: var(--bg-2);
+    padding: 24px;
+  }
+
+  .thesis-card .label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .thesis-card .verdict {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+
+  .thesis-card .verdict.go { color: var(--phosphor); }
+  .thesis-card .verdict.caution { color: var(--amber); }
+  .thesis-card .verdict.stop { color: var(--red); }
+
+  .thesis-card .detail {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 60px;
+    padding: 24px 0;
+    border-top: 1px solid var(--grid);
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.8;
+    letter-spacing: 0.05em;
+  }
+
+  .footer .row {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  /* Refresh button */
+  .refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid var(--phosphor-dim);
+    color: var(--phosphor);
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .refresh:hover {
+    background: var(--phosphor-dim);
+    color: var(--text);
+  }
+
+  /* Tabs for expiry view */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    padding: 8px 14px;
+    background: var(--bg-3);
+    border: 1px solid var(--grid);
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    background: var(--phosphor-dim);
+    color: var(--phosphor);
+    border-color: var(--phosphor);
+  }
+
+  @media (max-width: 768px) {
+    .container { padding: 16px 12px; }
+    .header { grid-template-columns: 1fr; }
+    .header-meta { text-align: left; }
+    .stat { border-right: none; border-bottom: 1px solid var(--grid); }
+    .stat:last-child { border-bottom: none; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="eyebrow">// GAMMA EXPOSURE TERMINAL</div>
+      <h1><span id="ticker">AAPL</span> <span class="accent">/gex</span></h1>
+    </div>
+    <div class="header-meta">
+      <div class="live">DATA STREAM <span id="data-time"></span></div>
+      <div>SOURCE: CBOE DELAYED OPRA FEED</div>
+      <div id="contracts-line"></div>
+    </div>
+  </div>
+
+  <!-- TOP STATS -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">SPOT</div>
+      <div class="stat-value" id="spot">—</div>
+      <div class="stat-sub">last trade</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">IV30</div>
+      <div class="stat-value amber" id="iv30">—</div>
+      <div class="stat-sub" id="iv-sub">implied volatility</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">NET GEX</div>
+      <div class="stat-value phosphor" id="net-gex">—</div>
+      <div class="stat-sub" id="regime-sub">per 1% move</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">CALL WALL</div>
+      <div class="stat-value" id="call-wall">—</div>
+      <div class="stat-sub" id="call-wall-sub">resistance / pin</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">PUT WALL</div>
+      <div class="stat-value" id="put-wall">—</div>
+      <div class="stat-sub" id="put-wall-sub">support</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">GAMMA FLIP</div>
+      <div class="stat-value amber" id="flip">—</div>
+      <div class="stat-sub">regime pivot</div>
+    </div>
+  </div>
+
+  <!-- CHART -->
+  <div class="section-label">
+    <span class="num">[01]</span>
+    <span class="title">GEX by strike</span>
+    <span class="line"></span>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-header">
+      <span>Net Gamma Exposure ($M per 1% move)</span>
+      <span class="legend">
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--phosphor)"></span>positive</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--red)"></span>negative</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--amber);height:8px;width:2px"></span>spot</span>
+      </span>
+    </div>
+    <svg id="chart-svg" viewBox="0 0 1200 480" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+
+  <!-- TRADE THESIS -->
+  <div class="section-label">
+    <span class="num">[02]</span>
+    <span class="title">Calendar spread thesis</span>
+    <span class="line"></span>
+  </div>
+
+  <div class="thesis-grid">
+    <div class="thesis-card">
+      <div class="label">REGIME</div>
+      <div class="verdict" id="thesis-regime">—</div>
+      <div class="detail" id="thesis-regime-detail">—</div>
+    </div>
+    <div class="thesis-card">
+      <div class="label">STRIKE SELECTION</div>
+      <div class="verdict" id="thesis-strike">—</div>
+      <div class="detail" id="thesis-strike-detail">—</div>
+    </div>
+    <div class="thesis-card">
+      <div class="label">PROFIT ZONE</div>
+      <div class="verdict" id="thesis-zone">—</div>
+      <div class="detail" id="thesis-zone-detail">—</div>
+    </div>
+    <div class="thesis-card">
+      <div class="label">VERDICT</div>
+      <div class="verdict" id="thesis-verdict">—</div>
+      <div class="detail" id="thesis-verdict-detail">—</div>
+    </div>
+  </div>
+
+  <!-- STRIKE TABLE -->
+  <div class="section-label">
+    <span class="num">[03]</span>
+    <span class="title">Strike-level detail</span>
+    <span class="line"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Strike</th>
+          <th>Net GEX ($M)</th>
+          <th>Call GEX ($M)</th>
+          <th>Put GEX ($M)</th>
+          <th>Call OI</th>
+          <th>Put OI</th>
+          <th>Distance</th>
+        </tr>
+      </thead>
+      <tbody id="strike-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- EXPIRY BREAKDOWN -->
+  <div class="section-label">
+    <span class="num">[04]</span>
+    <span class="title">Expiry concentration</span>
+    <span class="line"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Expiry</th>
+          <th>DTE</th>
+          <th>Net GEX ($M)</th>
+          <th>Call GEX ($M)</th>
+          <th>Put GEX ($M)</th>
+          <th>Call OI</th>
+          <th>Put OI</th>
+        </tr>
+      </thead>
+      <tbody id="expiry-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="row">
+      <div>
+        Built from CBOE delayed quotes API · Naive GEX model (assumes dealers short customer flow)<br>
+        Calculation: Σ (gamma × OI × 100 × spot² × 0.01) · Calls positive · Puts negative<br>
+        Refresh by re-running aapl_gex_fetcher.py and replacing embedded JSON
+      </div>
+      <div style="text-align:right">
+        NOT INVESTMENT ADVICE<br>
+        DELAYED 15 MIN<br>
+        v1.0
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ========== EMBEDDED DATA ==========
+const DATA = __DATA_PLACEHOLDER__;
+// ===================================
+
+// Format helpers
+const fmtMoney = (n) => {
+  const m = n / 1e6;
+  if (Math.abs(m) >= 1000) return (m/1000).toFixed(1) + 'B';
+  return (m >= 0 ? '+' : '') + m.toFixed(1) + 'M';
+};
+const fmtMoneyTbl = (n) => (n/1e6).toFixed(2);
+const fmtNum = (n) => n.toLocaleString();
+const fmtPrice = (n) => '$' + n.toFixed(2);
+const fmtStrike = (n) => '$' + n.toFixed(0);
+
+// Compute DTE
+function dte(expiry) {
+  const e = new Date(expiry + 'T16:00:00Z');
+  const t = new Date();
+  return Math.max(0, Math.round((e - t) / (1000 * 60 * 60 * 24)));
+}
+
+// Populate header
+function populateHeader() {
+  document.getElementById('ticker').textContent = DATA.ticker;
+  document.getElementById('data-time').textContent = DATA.timestamp + ' UTC';
+  document.getElementById('contracts-line').textContent =
+    `${DATA.contracts_used} contracts · ${DATA.days_forward} DTE window`;
+
+  document.getElementById('spot').textContent = fmtPrice(DATA.spot);
+  document.getElementById('iv30').textContent = DATA.iv30.toFixed(1) + '%';
+
+  const ivRank = DATA.iv30 < 25 ? 'low — calendar friendly' : DATA.iv30 < 40 ? 'moderate' : 'high — caution';
+  document.getElementById('iv-sub').textContent = ivRank;
+
+  const netGexM = DATA.totals.net_gex / 1e6;
+  document.getElementById('net-gex').textContent = (netGexM >= 0 ? '+' : '') + netGexM.toFixed(0) + 'M';
+  document.getElementById('net-gex').className = 'stat-value ' + (netGexM >= 0 ? 'phosphor' : 'red');
+  document.getElementById('regime-sub').textContent = DATA.totals.regime + ' regime · per 1% move';
+
+  document.getElementById('call-wall').textContent = fmtStrike(DATA.call_wall.strike);
+  document.getElementById('call-wall-sub').textContent = '$' + (DATA.call_wall.gex/1e6).toFixed(0) + 'M gamma';
+
+  document.getElementById('put-wall').textContent = fmtStrike(DATA.put_wall.strike);
+  document.getElementById('put-wall-sub').textContent = '$' + Math.abs(DATA.put_wall.gex/1e6).toFixed(0) + 'M gamma';
+
+  document.getElementById('flip').textContent = DATA.gamma_flip ? fmtStrike(DATA.gamma_flip) : 'N/A';
+}
+
+// Build the chart
+function buildChart() {
+  const svg = document.getElementById('chart-svg');
+  const W = 1200, H = 480;
+  const m = { top: 30, right: 30, bottom: 60, left: 80 };
+  const innerW = W - m.left - m.right;
+  const innerH = H - m.top - m.bottom;
+
+  const strikes = DATA.strikes.filter(s => Math.abs(s.strike - DATA.spot) <= 25);
+  if (strikes.length === 0) return;
+
+  const xMin = Math.min(...strikes.map(s => s.strike));
+  const xMax = Math.max(...strikes.map(s => s.strike));
+  const yMin = Math.min(0, ...strikes.map(s => s.net_gex / 1e6));
+  const yMax = Math.max(0, ...strikes.map(s => s.net_gex / 1e6));
+  const yPad = (yMax - yMin) * 0.1;
+
+  const xScale = (x) => m.left + ((x - xMin) / (xMax - xMin)) * innerW;
+  const yScale = (y) => m.top + innerH - ((y - (yMin - yPad)) / ((yMax + yPad) - (yMin - yPad))) * innerH;
+
+  const barW = innerW / strikes.length * 0.7;
+  const zeroY = yScale(0);
+
+  let html = '';
+
+  // Grid lines (horizontal)
+  const gridSteps = 5;
+  for (let i = 0; i <= gridSteps; i++) {
+    const v = (yMin - yPad) + ((yMax + yPad) - (yMin - yPad)) * (i / gridSteps);
+    const y = yScale(v);
+    html += `<line x1="${m.left}" y1="${y}" x2="${m.left + innerW}" y2="${y}" stroke="var(--grid)" stroke-width="1" />`;
+    html += `<text x="${m.left - 10}" y="${y + 4}" text-anchor="end" fill="var(--text-muted)" font-size="11" font-family="JetBrains Mono">${v.toFixed(0)}M</text>`;
+  }
+
+  // Zero line accent
+  html += `<line x1="${m.left}" y1="${zeroY}" x2="${m.left + innerW}" y2="${zeroY}" stroke="var(--text-muted)" stroke-width="1" />`;
+
+  // Bars
+  strikes.forEach((s) => {
+    const cx = xScale(s.strike);
+    const v = s.net_gex / 1e6;
+    const y = yScale(Math.max(0, v));
+    const h = Math.abs(yScale(v) - zeroY);
+    const color = v >= 0 ? 'var(--phosphor)' : 'var(--red)';
+    html += `<rect x="${cx - barW/2}" y="${y}" width="${barW}" height="${h}" fill="${color}" opacity="0.85">
+      <title>$${s.strike}: ${v.toFixed(1)}M (Call OI: ${s.call_oi}, Put OI: ${s.put_oi})</title>
+    </rect>`;
+  });
+
+  // X axis labels (every other strike for readability)
+  strikes.forEach((s, i) => {
+    if (i % 2 === 0 || strikes.length <= 12) {
+      const x = xScale(s.strike);
+      html += `<text x="${x}" y="${m.top + innerH + 20}" text-anchor="middle" fill="var(--text-muted)" font-size="10" font-family="JetBrains Mono">${s.strike}</text>`;
+    }
+  });
+
+  // Spot line
+  const spotX = xScale(DATA.spot);
+  if (spotX >= m.left && spotX <= m.left + innerW) {
+    html += `<line x1="${spotX}" y1="${m.top}" x2="${spotX}" y2="${m.top + innerH}"
+      stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="4 3" />`;
+    html += `<text x="${spotX}" y="${m.top - 8}" text-anchor="middle" fill="var(--amber)" font-size="11"
+      font-family="JetBrains Mono" font-weight="500">SPOT ${DATA.spot.toFixed(2)}</text>`;
+  }
+
+  // Gamma flip annotation
+  if (DATA.gamma_flip) {
+    const fx = xScale(DATA.gamma_flip);
+    if (fx >= m.left && fx <= m.left + innerW) {
+      html += `<line x1="${fx}" y1="${m.top}" x2="${fx}" y2="${m.top + innerH}"
+        stroke="var(--text-muted)" stroke-width="1" stroke-dasharray="2 4" opacity="0.5" />`;
+      html += `<text x="${fx}" y="${m.top + 14}" text-anchor="middle" fill="var(--text-muted)" font-size="9"
+        font-family="JetBrains Mono">FLIP</text>`;
+    }
+  }
+
+  // Axis label
+  html += `<text x="${m.left + innerW/2}" y="${H - 15}" text-anchor="middle" fill="var(--text-dim)" font-size="11"
+    font-family="JetBrains Mono" letter-spacing="0.1em">STRIKE PRICE ($)</text>`;
+
+  svg.innerHTML = html;
+}
+
+// Build strike table
+function buildStrikeTable() {
+  const tbody = document.getElementById('strike-tbody');
+  const filtered = DATA.strikes.filter(s => Math.abs(s.strike - DATA.spot) <= 20);
+  let html = '';
+  filtered.forEach(s => {
+    const dist = ((s.strike - DATA.spot) / DATA.spot * 100);
+    const distStr = (dist >= 0 ? '+' : '') + dist.toFixed(1) + '%';
+    const isSpot = Math.abs(s.strike - DATA.spot) < 1.5;
+    const isCallWall = s.strike === DATA.call_wall.strike;
+    const isPutWall = s.strike === DATA.put_wall.strike && s.strike !== DATA.call_wall.strike;
+    const isFlip = s.strike === DATA.gamma_flip;
+    const classes = [
+      isSpot ? 'spot-row' : '',
+      isCallWall && !isSpot ? 'call-wall-row' : '',
+      isPutWall ? 'put-wall-row' : '',
+      isFlip && !isSpot ? 'flip-row' : '',
+    ].filter(Boolean).join(' ');
+
+    const netCls = s.net_gex >= 0 ? 'pos' : 'neg';
+    html += `<tr class="${classes}">
+      <td>${fmtStrike(s.strike)}</td>
+      <td class="${netCls}">${fmtMoneyTbl(s.net_gex)}</td>
+      <td class="pos">${fmtMoneyTbl(s.call_gex)}</td>
+      <td class="neg">${fmtMoneyTbl(s.put_gex)}</td>
+      <td>${fmtNum(s.call_oi)}</td>
+      <td>${fmtNum(s.put_oi)}</td>
+      <td class="dim">${distStr}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+// Build expiry table
+function buildExpiryTable() {
+  const tbody = document.getElementById('expiry-tbody');
+  let html = '';
+  DATA.expiries.forEach(e => {
+    const d = dte(e.expiry);
+    const netCls = e.net_gex >= 0 ? 'pos' : 'neg';
+    html += `<tr>
+      <td>${e.expiry}</td>
+      <td class="dim">${d}d</td>
+      <td class="${netCls}">${fmtMoneyTbl(e.net_gex)}</td>
+      <td class="pos">${fmtMoneyTbl(e.call_gex)}</td>
+      <td class="neg">${fmtMoneyTbl(e.put_gex)}</td>
+      <td>${fmtNum(e.call_oi)}</td>
+      <td>${fmtNum(e.put_oi)}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+// Trade thesis logic
+function buildThesis() {
+  const netGexM = DATA.totals.net_gex / 1e6;
+  const positive = netGexM > 0;
+  const callWall = DATA.call_wall.strike;
+  const putWall = DATA.put_wall.strike;
+  const flip = DATA.gamma_flip;
+  const spot = DATA.spot;
+  const aboveFlip = flip ? spot > flip : true;
+
+  // Regime
+  const regimeEl = document.getElementById('thesis-regime');
+  const regimeDetail = document.getElementById('thesis-regime-detail');
+  if (positive && aboveFlip) {
+    regimeEl.textContent = 'Stabilizing.';
+    regimeEl.className = 'verdict go';
+    regimeDetail.textContent = `Net GEX ${fmtMoney(DATA.totals.net_gex)} above flip at $${flip}. Dealer hedging dampens moves — ideal for a calendar spread.`;
+  } else if (!aboveFlip) {
+    regimeEl.textContent = 'Amplifying.';
+    regimeEl.className = 'verdict stop';
+    regimeDetail.textContent = `Spot below gamma flip at $${flip}. Dealer flow accelerates moves — calendars get crushed here.`;
+  } else {
+    regimeEl.textContent = 'Mixed.';
+    regimeEl.className = 'verdict caution';
+    regimeDetail.textContent = `Conflicting signals — proceed with reduced size.`;
+  }
+
+  // Strike
+  const strikeEl = document.getElementById('thesis-strike');
+  const strikeDetail = document.getElementById('thesis-strike-detail');
+  strikeEl.textContent = `$${callWall.toFixed(0)} strike.`;
+  strikeEl.className = 'verdict go';
+  strikeDetail.textContent = `Heaviest call gamma at $${callWall} (${(DATA.call_wall.gex/1e6).toFixed(0)}M). Dealers mechanically pin price toward this strike — your max profit lives here.`;
+
+  // Profit zone
+  const zoneEl = document.getElementById('thesis-zone');
+  const zoneDetail = document.getElementById('thesis-zone-detail');
+  const lower = flip || (spot * 0.97);
+  const upperWall = DATA.strikes
+    .filter(s => s.strike > callWall && s.call_gex > 50e6)
+    .sort((a,b) => a.strike - b.strike)[0];
+  const upper = upperWall ? upperWall.strike : (spot * 1.03);
+  zoneEl.textContent = `$${lower.toFixed(0)} – $${upper.toFixed(0)}`;
+  zoneEl.className = 'verdict go';
+  zoneDetail.textContent = `Lower bound: gamma flip / put support. Upper bound: next major call wall. Stay in this band, you make money.`;
+
+  // Verdict
+  const verdictEl = document.getElementById('thesis-verdict');
+  const verdictDetail = document.getElementById('thesis-verdict-detail');
+  if (positive && aboveFlip && DATA.iv30 < 30) {
+    verdictEl.textContent = 'Trade.';
+    verdictEl.className = 'verdict go';
+    verdictDetail.textContent = `IV low (${DATA.iv30.toFixed(1)}%), regime stabilizing, strong pin at $${callWall}. Conditions aligned for calendar entry.`;
+  } else if (!aboveFlip || DATA.iv30 > 40) {
+    verdictEl.textContent = 'Skip.';
+    verdictEl.className = 'verdict stop';
+    verdictDetail.textContent = `Conditions unfavorable — wait for IV to drop or price to clear gamma flip.`;
+  } else {
+    verdictEl.textContent = 'Smaller size.';
+    verdictEl.className = 'verdict caution';
+    verdictDetail.textContent = `Setup is workable but not optimal. Reduce position size by half.`;
+  }
+}
+
+// Init
+populateHeader();
+buildChart();
+buildStrikeTable();
+buildExpiryTable();
+buildThesis();
+window.addEventListener('resize', buildChart);
+</script>
+
+</body>
+</html>
