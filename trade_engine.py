@@ -15,6 +15,15 @@ import re
 from datetime import datetime, date, timedelta
 
 
+def previous_trading_day(d: date) -> date:
+    """Return the previous US trading day (Mon-Fri, no holidays)."""
+    prev = d - timedelta(days=1)
+    # If Saturday, go back to Friday; if Sunday, go back to Friday
+    while prev.weekday() >= 5:  # 5=Sat, 6=Sun
+        prev -= timedelta(days=1)
+    return prev
+
+
 def parse_occ_symbol(sym: str, ticker: str):
     """Parse OCC option symbol back to (expiry, cp, strike)."""
     pattern = rf"{ticker}(\d{{2}})(\d{{2}})(\d{{2}})([CP])(\d{{8}})"
@@ -326,7 +335,16 @@ def build_trade_recommendation(ticker_data: dict, raw_chain: dict, ticker: str,
     # Action plan with concrete dates/levels
     front_exp_dt = datetime.strptime(front_exp, "%Y-%m-%d").date()
     back_exp_dt = datetime.strptime(back_exp, "%Y-%m-%d").date()
-    close_by = front_exp_dt - timedelta(days=1)  # close day before expiry
+    # Close by 3:30 PM ET on the front expiry day (assuming it's a weekday).
+    # This avoids gamma/pin risk in the final 30 min while capturing maximum theta.
+    # Front expiries are always weekdays for standard listed options.
+    if front_exp_dt.weekday() < 5:  # Mon-Fri
+        close_by_date = front_exp_dt
+        close_by_note = "by 3:30 PM ET (front expiry day)"
+    else:
+        # Defensive fallback (shouldn't happen for listed options)
+        close_by_date = previous_trading_day(front_exp_dt)
+        close_by_note = "by close (previous trading day)"
 
     return {
         "verdict": verdict,
@@ -365,7 +383,8 @@ def build_trade_recommendation(ticker_data: dict, raw_chain: dict, ticker: str,
                 "target_value": take_profit_value,
                 "take_profit_dollars": take_profit_dollars,
                 "max_profit_dollars": max_profit_dollars,
-                "close_by": close_by.isoformat(),
+                "close_by": close_by_date.isoformat(),
+                "close_by_note": close_by_note,
             },
             "breakevens": {
                 "lower": be_low,

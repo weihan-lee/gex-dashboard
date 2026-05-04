@@ -156,7 +156,7 @@ def build_index(summaries: list[dict]) -> None:
   }}
   .ticker-card {{
     display: block; background: var(--bg-2); border: 1px solid var(--grid);
-    padding: 20px; text-decoration: none; color: var(--text);
+    padding: 20px; padding-top: 44px; text-decoration: none; color: var(--text);
     transition: all 0.15s; position: relative;
   }}
   .ticker-card:hover {{
@@ -178,7 +178,7 @@ def build_index(summaries: list[dict]) -> None:
   .ticker-row.dim {{ font-size: 10px; color: var(--text-muted); margin-top: 8px; }}
   .ticker-name {{
     font-family: 'Fraunces', serif; font-size: 28px; font-weight: 400;
-    letter-spacing: -0.02em; padding-right: 80px;
+    letter-spacing: -0.02em;
   }}
   .ticker-spot {{
     font-family: 'Fraunces', serif; font-size: 22px; color: var(--text);

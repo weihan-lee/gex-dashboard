@@ -1158,7 +1158,7 @@ function buildTradeRecommendation() {
       <div class="level">
         <div class="level-label">Close By</div>
         <div class="level-value entry" style="font-size:18px">${fmtDate(trade.exit.close_by)}</div>
-        <div class="level-sub">before front expiry</div>
+        <div class="level-sub">${trade.exit.close_by_note || 'before front expiry'}</div>
       </div>
     </div>`;
 
