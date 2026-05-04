@@ -10,13 +10,20 @@ Usage:
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from aapl_gex_fetcher import fetch_cboe_chain, compute_gex
 from refresh_dashboard import filter_for_dashboard, build_dashboard
 
+# Display timezone for the dashboard (GMT+8, Malaysia/Singapore time)
+DISPLAY_TZ = timezone(timedelta(hours=8))
+DISPLAY_TZ_LABEL = "MYT"
+
 # Tickers to track. Edit this list to add/remove.
 TICKERS = ["AAPL", "SPY", "QQQ", "NVDA", "TSLA", "MSFT"]
+
+# GitHub repo (shown in footer). Format: username/repo
+GITHUB_REPO = "weihan-lee/gex-dashboard"
 
 OUTPUT_DIR = "site"
 TEMPLATE = "gex_dashboard_template.html"
@@ -52,7 +59,7 @@ def build_one(ticker: str) -> dict | None:
 def build_index(summaries: list[dict]) -> None:
     """Build the index page that lists all tickers with their headline numbers."""
     valid = [s for s in summaries if s is not None]
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    now = datetime.now(DISPLAY_TZ).strftime(f"%Y-%m-%d %H:%M {DISPLAY_TZ_LABEL}")
 
     rows_html = ""
     for s in valid:
@@ -186,7 +193,7 @@ def build_index(summaries: list[dict]) -> None:
     <div class="meta">
       <div class="live">UPDATED {now}</div>
       <div>SOURCE: CBOE DELAYED OPRA</div>
-      <div>{len(valid)} TICKERS · AUTO-REFRESH HOURLY</div>
+      <div>{len(valid)} TICKERS · 30MIN OPEN · HOURLY OTHERWISE</div>
     </div>
   </div>
 
@@ -195,7 +202,7 @@ def build_index(summaries: list[dict]) -> None:
 
   <div class="footer">
     Tap any ticker for full GEX dashboard · Naive GEX model · Not investment advice<br>
-    Source: github.com/{{REPO}} · Built with GitHub Actions
+    Source: <a href="https://github.com/{GITHUB_REPO}" style="color:var(--text-dim);text-decoration:underline">github.com/{GITHUB_REPO}</a> · Built with GitHub Actions
   </div>
 </div>
 </body>
