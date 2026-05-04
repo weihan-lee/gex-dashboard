@@ -322,6 +322,199 @@
     border: 1px solid var(--grid);
   }
 
+  /* Trade recommendation card */
+  .trade-card {
+    background: var(--bg-2);
+    border: 1px solid var(--grid);
+    margin-bottom: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .trade-card.trade { border-color: var(--phosphor-dim); }
+  .trade-card.reduce { border-color: var(--amber-dim); }
+  .trade-card.skip { border-color: var(--red-dim); }
+
+  .trade-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: var(--phosphor);
+  }
+  .trade-card.reduce::before { background: var(--amber); }
+  .trade-card.skip::before { background: var(--red); }
+
+  .trade-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 16px;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--grid);
+  }
+
+  .trade-badge {
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    padding: 4px 10px;
+    border: 1px solid;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .trade-badge.trade { color: var(--phosphor); border-color: var(--phosphor); }
+  .trade-badge.reduce { color: var(--amber); border-color: var(--amber); }
+  .trade-badge.skip { color: var(--red); border-color: var(--red); }
+
+  .trade-title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 400;
+  }
+
+  .trade-rr {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .trade-rr .big {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    color: var(--text);
+    display: block;
+  }
+
+  .legs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid var(--grid);
+  }
+
+  .leg {
+    padding: 20px 24px;
+    border-right: 1px solid var(--grid);
+  }
+  .leg:last-child { border-right: none; }
+
+  .leg-action {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    margin-bottom: 8px;
+  }
+  .leg-action.sell { color: var(--red); }
+  .leg-action.buy { color: var(--phosphor); }
+
+  .leg-strike {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+  }
+
+  .leg-detail {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .leg-price {
+    font-size: 14px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    margin-top: 8px;
+  }
+
+  .leg-price .label {
+    color: var(--text-muted);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    margin-right: 6px;
+  }
+
+  .levels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    border-bottom: 1px solid var(--grid);
+  }
+
+  .level {
+    padding: 16px 24px;
+    border-right: 1px solid var(--grid);
+  }
+  .level:last-child { border-right: none; }
+
+  .level-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .level-value {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .level-value.entry { color: var(--text); }
+  .level-value.stop { color: var(--red); }
+  .level-value.target { color: var(--phosphor); }
+  .level-value.maxp { color: var(--amber); }
+
+  .level-sub {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .events {
+    padding: 16px 24px;
+  }
+
+  .event {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 12px;
+    line-height: 1.5;
+    border-bottom: 1px dashed var(--grid);
+  }
+  .event:last-child { border-bottom: none; }
+
+  .event-tag {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    padding: 2px 8px;
+    border: 1px solid;
+    height: 18px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .event-tag.great { color: var(--phosphor); border-color: var(--phosphor); }
+  .event-tag.ok { color: var(--phosphor-dim); border-color: var(--phosphor-dim); }
+  .event-tag.warning { color: var(--amber); border-color: var(--amber); }
+
+  .event-text { flex: 1; }
+  .event-text .label { color: var(--text); }
+  .event-text .detail { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+
+  .no-trade {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  .no-trade .reason {
+    color: var(--text);
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+
   .thesis-card {
     background: var(--bg-2);
     padding: 24px;
@@ -480,9 +673,18 @@
     </div>
   </div>
 
-  <!-- CHART -->
+  <!-- TRADE RECOMMENDATION -->
   <div class="section-label">
     <span class="num">[01]</span>
+    <span class="title">Recommended trade</span>
+    <span class="line"></span>
+  </div>
+
+  <div id="trade-recommendation"></div>
+
+  <!-- CHART -->
+  <div class="section-label">
+    <span class="num">[02]</span>
     <span class="title">GEX by strike</span>
     <span class="line"></span>
   </div>
@@ -501,7 +703,7 @@
 
   <!-- TRADE THESIS -->
   <div class="section-label">
-    <span class="num">[02]</span>
+    <span class="num">[03]</span>
     <span class="title">Calendar spread thesis</span>
     <span class="line"></span>
   </div>
@@ -531,7 +733,7 @@
 
   <!-- STRIKE TABLE -->
   <div class="section-label">
-    <span class="num">[03]</span>
+    <span class="num">[04]</span>
     <span class="title">Strike-level detail</span>
     <span class="line"></span>
   </div>
@@ -555,7 +757,7 @@
 
   <!-- EXPIRY BREAKDOWN -->
   <div class="section-label">
-    <span class="num">[04]</span>
+    <span class="num">[05]</span>
     <span class="title">Expiry concentration</span>
     <span class="line"></span>
   </div>
@@ -857,8 +1059,144 @@ function buildThesis() {
   }
 }
 
+// Build the recommended trade card
+function buildTradeRecommendation() {
+  const container = document.getElementById('trade-recommendation');
+  const rec = DATA.trade_recommendation;
+
+  if (!rec) {
+    container.innerHTML = '<div class="no-trade">No recommendation available.</div>';
+    return;
+  }
+
+  const action = rec.verdict.action;
+  const trade = rec.trade;
+
+  // Helper formatters
+  const $ = (n) => '$' + n.toFixed(2);
+  const $0 = (n) => '$' + n.toFixed(0);
+  const $$ = (n) => (n >= 0 ? '+' : '') + '$' + n.toFixed(0);
+
+  // Format dates as e.g. "Fri 8 May"
+  const fmtDate = (s) => {
+    const d = new Date(s + 'T00:00:00');
+    return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  };
+
+  if (!trade) {
+    const errorMsg = rec.error || (action === 'skip'
+      ? 'Conditions are not favorable for entry.'
+      : 'Unable to find a suitable spread structure.');
+    container.innerHTML = `
+      <div class="trade-card ${action}">
+        <div class="trade-header">
+          <div class="trade-badge ${action}">${action === 'skip' ? 'Skip' : action}</div>
+          <div class="trade-title">No trade recommended</div>
+          <div></div>
+        </div>
+        <div class="no-trade">
+          <div class="reason">${errorMsg}</div>
+          <div>${rec.verdict.reasons.map(r => '• ' + r).join('  ')}</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Build legs
+  const legsHtml = `
+    <div class="legs">
+      <div class="leg">
+        <div class="leg-action sell">SELL TO OPEN · FRONT</div>
+        <div class="leg-strike">${$0(trade.strike)} CALL</div>
+        <div class="leg-detail">${fmtDate(trade.front.expiry)} · ${trade.front.dte} DTE</div>
+        <div class="leg-price">
+          <span class="label">MID</span>${$(trade.front.mid)}
+          <span class="label" style="margin-left:12px">B/A</span>${$(trade.front.bid)} / ${$(trade.front.ask)}
+        </div>
+        <div class="leg-detail" style="margin-top:6px">OI ${trade.front.oi.toLocaleString()} · IV ${(trade.front.iv).toFixed(1)}%</div>
+      </div>
+      <div class="leg">
+        <div class="leg-action buy">BUY TO OPEN · BACK</div>
+        <div class="leg-strike">${$0(trade.strike)} CALL</div>
+        <div class="leg-detail">${fmtDate(trade.back.expiry)} · ${trade.back.dte} DTE</div>
+        <div class="leg-price">
+          <span class="label">MID</span>${$(trade.back.mid)}
+          <span class="label" style="margin-left:12px">B/A</span>${$(trade.back.bid)} / ${$(trade.back.ask)}
+        </div>
+        <div class="leg-detail" style="margin-top:6px">OI ${trade.back.oi.toLocaleString()} · IV ${(trade.back.iv).toFixed(1)}%</div>
+      </div>
+    </div>`;
+
+  // Levels
+  const levelsHtml = `
+    <div class="levels">
+      <div class="level">
+        <div class="level-label">Entry Debit</div>
+        <div class="level-value entry">${$(trade.entry.debit)}</div>
+        <div class="level-sub">${$0(trade.entry.debit_dollars)} / contract</div>
+      </div>
+      <div class="level">
+        <div class="level-label">Stop @ 50%</div>
+        <div class="level-value stop">${$(trade.exit.stop_value)}</div>
+        <div class="level-sub">Loss ${$$(- trade.exit.stop_loss_dollars)}</div>
+      </div>
+      <div class="level">
+        <div class="level-label">Target @ 50%</div>
+        <div class="level-value target">${$(trade.exit.target_value)}</div>
+        <div class="level-sub">Gain ${$$(trade.exit.take_profit_dollars)}</div>
+      </div>
+      <div class="level">
+        <div class="level-label">Max Profit Est.</div>
+        <div class="level-value maxp">${$$(trade.exit.max_profit_dollars)}</div>
+        <div class="level-sub">if pinned at ${$0(trade.strike)}</div>
+      </div>
+      <div class="level">
+        <div class="level-label">Breakevens</div>
+        <div class="level-value entry">${$(trade.breakevens.lower)}</div>
+        <div class="level-sub">to ${$(trade.breakevens.upper)} (±${trade.breakevens.width_pct.toFixed(1)}%)</div>
+      </div>
+      <div class="level">
+        <div class="level-label">Close By</div>
+        <div class="level-value entry" style="font-size:18px">${fmtDate(trade.exit.close_by)}</div>
+        <div class="level-sub">before front expiry</div>
+      </div>
+    </div>`;
+
+  // GEX events
+  const eventsHtml = trade.gex_events && trade.gex_events.length ? `
+    <div class="events">
+      ${trade.gex_events.map(ev => `
+        <div class="event">
+          <div class="event-tag ${ev.type}">${ev.type}</div>
+          <div class="event-text">
+            <div class="label">${ev.label}</div>
+            <div class="detail">${ev.detail}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>` : '';
+
+  const actionLabel = action === 'trade' ? 'Trade' : action === 'reduce' ? 'Reduce size' : 'Skip';
+
+  container.innerHTML = `
+    <div class="trade-card ${action}">
+      <div class="trade-header">
+        <div class="trade-badge ${action}">${actionLabel}</div>
+        <div class="trade-title">${trade.structure} · ${$0(trade.strike)} strike · 1 contract</div>
+        <div class="trade-rr">
+          <span class="big">1 : ${trade.rr_ratio.toFixed(2)}</span>
+          R / R
+        </div>
+      </div>
+      ${legsHtml}
+      ${levelsHtml}
+      ${eventsHtml}
+    </div>`;
+}
+
 // Init
 populateHeader();
+buildTradeRecommendation();
 buildChart();
 buildStrikeTable();
 buildExpiryTable();
