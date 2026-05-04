@@ -621,7 +621,18 @@ function dte(expiry) {
 // Populate header
 function populateHeader() {
   document.getElementById('ticker').textContent = DATA.ticker;
-  document.getElementById('data-time').textContent = DATA.timestamp + ' UTC';
+
+  // CBOE returns timestamp in UTC; convert to GMT+8 (MYT) for display
+  const utcStr = DATA.timestamp.replace(' ', 'T') + 'Z';
+  const dt = new Date(utcStr);
+  const mytStr = dt.toLocaleString('en-GB', {
+    timeZone: 'Asia/Kuala_Lumpur',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  }).replace(',', '');
+  document.getElementById('data-time').textContent = mytStr + ' MYT';
+
   document.getElementById('contracts-line').textContent =
     `${DATA.contracts_used} contracts · ${DATA.days_forward} DTE window`;
 
