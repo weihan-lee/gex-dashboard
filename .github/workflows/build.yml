@@ -1,72 +1,17 @@
 name: Build GEX Dashboard
 
-# Scheduled runs use multiple firing times around peak hours to combat
-# GitHub Actions queue delays (which can be 15-60 min at the top of every hour).
-# Plus hourly fallback ensures the dashboard never goes more than ~1 hour stale
-# during US market hours.
-
 on:
   schedule:
-    # === First 4 hours of US market (highest activity, want 30min resolution) ===
-    # 9:30 AM ET market open — fire 3 times to overcome queue delays
-    - cron: '25 13 * * 1-5'   # 9:25 AM ET
-    - cron: '35 13 * * 1-5'   # 9:35 AM ET
-    - cron: '45 13 * * 1-5'   # 9:45 AM ET
+    # Every 30 minutes during US market hours (Mon-Fri, 13:30-21:00 UTC)
+    # Note: GitHub's cron is best-effort; expect 5-30 min delays at peak times.
+    # Fewer cron entries = more reliable triggering.
+    - cron: '*/30 13-21 * * 1-5'
 
-    # 10:00 AM ET — 2 firings
-    - cron: '55 13 * * 1-5'   # 9:55 AM ET
-    - cron: '5 14 * * 1-5'    # 10:05 AM ET
+    # Once daily at 9 AM MYT (1 AM UTC) for evening review
+    - cron: '0 1 * * 2-6'
 
-    # 10:30 AM ET
-    - cron: '25 14 * * 1-5'   # 10:25 AM ET
-    - cron: '35 14 * * 1-5'   # 10:35 AM ET
-
-    # 11:00 AM ET
-    - cron: '55 14 * * 1-5'   # 10:55 AM ET
-    - cron: '5 15 * * 1-5'    # 11:05 AM ET
-
-    # 11:30 AM ET
-    - cron: '25 15 * * 1-5'   # 11:25 AM ET
-    - cron: '35 15 * * 1-5'   # 11:35 AM ET
-
-    # 12:00 PM ET
-    - cron: '55 15 * * 1-5'   # 11:55 AM ET
-    - cron: '5 16 * * 1-5'    # 12:05 PM ET
-
-    # 12:30 PM ET
-    - cron: '25 16 * * 1-5'   # 12:25 PM ET
-    - cron: '35 16 * * 1-5'   # 12:35 PM ET
-
-    # 1:00 PM ET
-    - cron: '55 16 * * 1-5'   # 12:55 PM ET
-    - cron: '5 17 * * 1-5'    # 1:05 PM ET
-
-    # 1:30 PM ET
-    - cron: '25 17 * * 1-5'   # 1:25 PM ET
-    - cron: '35 17 * * 1-5'   # 1:35 PM ET
-
-    # === Rest of market — every hour ===
-    - cron: '25 18 * * 1-5'   # 2:25 PM ET
-    - cron: '35 18 * * 1-5'   # 2:35 PM ET
-    - cron: '25 19 * * 1-5'   # 3:25 PM ET
-    - cron: '35 19 * * 1-5'   # 3:35 PM ET
-
-    # === Market close ===
-    - cron: '55 19 * * 1-5'   # 3:55 PM ET (5 min before close)
-    - cron: '5 20 * * 1-5'    # 4:05 PM ET (5 min after close)
-
-    # === Post-close EOD update (CBOE finalizes ~5 PM ET) ===
-    - cron: '5 21 * * 1-5'    # 5:05 PM ET
-    - cron: '15 21 * * 1-5'   # 5:15 PM ET
-
-    # === MYT morning review (9 AM MYT = 1 AM UTC next day) ===
-    - cron: '0 1 * * 2-6'     # 9:00 AM MYT
-    - cron: '15 1 * * 2-6'    # 9:15 AM MYT (fallback)
-
-  # Allow manual trigger anytime
   workflow_dispatch:
 
-  # Rebuild on push to main
   push:
     branches: [main]
 
@@ -75,8 +20,6 @@ permissions:
   pages: write
   id-token: write
 
-# Avoid wasted runs: if multiple cron jobs fire close together,
-# only the latest one deploys. Earlier ones get cancelled.
 concurrency:
   group: pages
   cancel-in-progress: true
