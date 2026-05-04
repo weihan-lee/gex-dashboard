@@ -226,17 +226,21 @@ def evaluate_verdict(ticker_data: dict) -> dict:
 
 
 def build_trade_recommendation(ticker_data: dict, raw_chain: dict, ticker: str,
-                                today: date | None = None) -> dict | None:
+                                today: date | None = None,
+                                events: list[dict] | None = None) -> dict | None:
     """
     Build a complete calendar spread trade recommendation.
     Returns None if conditions don't support a trade.
+
+    If `events` is provided (list of macro/earnings events from events_engine),
+    the verdict will be downgraded if critical events fall in the window.
     """
     if today is None:
         today = date.today()
 
     verdict = evaluate_verdict(ticker_data)
     if verdict["action"] == "skip":
-        return {"verdict": verdict, "trade": None}
+        return {"verdict": verdict, "trade": None, "events": events or []}
 
     chain_idx = index_chain(raw_chain, ticker)
     spot = ticker_data["spot"]
@@ -335,19 +339,31 @@ def build_trade_recommendation(ticker_data: dict, raw_chain: dict, ticker: str,
     # Action plan with concrete dates/levels
     front_exp_dt = datetime.strptime(front_exp, "%Y-%m-%d").date()
     back_exp_dt = datetime.strptime(back_exp, "%Y-%m-%d").date()
-    # Close by 3:30 PM ET on the front expiry day (assuming it's a weekday).
-    # This avoids gamma/pin risk in the final 30 min while capturing maximum theta.
-    # Front expiries are always weekdays for standard listed options.
     if front_exp_dt.weekday() < 5:  # Mon-Fri
         close_by_date = front_exp_dt
         close_by_note = "by 3:30 PM ET (front expiry day)"
     else:
-        # Defensive fallback (shouldn't happen for listed options)
         close_by_date = previous_trading_day(front_exp_dt)
         close_by_note = "by close (previous trading day)"
 
+    # Filter events to those within trade window (today through front expiry)
+    relevant_events = []
+    if events:
+        for ev in events:
+            try:
+                ev_date = date.fromisoformat(ev["date"][:10])
+                if today <= ev_date <= front_exp_dt:
+                    relevant_events.append(ev)
+            except (ValueError, KeyError):
+                continue
+
+    # Apply event-based verdict downgrade
+    from events_engine import adjust_verdict_for_events
+    final_verdict = adjust_verdict_for_events(verdict, relevant_events, front_exp_dt)
+
     return {
-        "verdict": verdict,
+        "verdict": final_verdict,
+        "events": relevant_events,
         "trade": {
             "ticker": ticker,
             "structure": "Call Calendar Spread",

@@ -10,11 +10,13 @@ Usage:
 import json
 import os
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 
 from aapl_gex_fetcher import fetch_cboe_chain, compute_gex
 from refresh_dashboard import filter_for_dashboard, build_dashboard
 from trade_engine import build_trade_recommendation
+from events_engine import fetch_macro_events, get_events_for_window
+from events_engine import fetch_macro_events, get_events_for_window
 
 # Display timezone for the dashboard (GMT+8, Malaysia/Singapore time)
 DISPLAY_TZ = timezone(timedelta(hours=8))
@@ -30,23 +32,29 @@ OUTPUT_DIR = "site"
 TEMPLATE = "gex_dashboard_template.html"
 
 
-def build_one(ticker: str) -> dict | None:
+def build_one(ticker: str, macro_events: list | None = None) -> dict | None:
     """Build dashboard for one ticker. Returns summary dict or None on failure."""
     try:
+        from datetime import timedelta
         print(f"  Fetching {ticker}...", flush=True)
         raw = fetch_cboe_chain(ticker)
         result = compute_gex(raw, ticker, days_forward=28)
 
-        # Generate trade recommendation
-        trade_rec = build_trade_recommendation(result, raw, ticker)
+        # Get events for the trade window (today + 14 days covers most setups)
+        today = date.today()
+        events = get_events_for_window(ticker, today, today + timedelta(days=14),
+                                        macro_cache=macro_events)
+
+        # Generate trade recommendation, with event-based verdict adjustment
+        trade_rec = build_trade_recommendation(result, raw, ticker, events=events)
 
         dashboard_data = filter_for_dashboard(result, range_pct=0.10)
-        # Inject the trade recommendation into dashboard data
         dashboard_data["trade_recommendation"] = trade_rec
 
         out_path = os.path.join(OUTPUT_DIR, f"{ticker.lower()}.html")
         build_dashboard(dashboard_data, TEMPLATE, out_path)
 
+        rec_events = (trade_rec or {}).get("events", []) or []
         return {
             "ticker": ticker,
             "spot": result["spot"],
@@ -59,6 +67,8 @@ def build_one(ticker: str) -> dict | None:
             "url": f"{ticker.lower()}.html",
             "verdict": trade_rec["verdict"]["action"] if trade_rec else "skip",
             "has_trade": bool(trade_rec and trade_rec.get("trade")),
+            "event_count": len(rec_events),
+            "critical_events": sum(1 for e in rec_events if e["impact"] == "critical"),
         }
     except Exception as e:
         print(f"  ERROR on {ticker}: {e}", flush=True)
@@ -80,6 +90,12 @@ def build_index(summaries: list[dict]) -> None:
         verdict_label = {"trade": "TRADE", "reduce": "REDUCE", "skip": "SKIP"}.get(verdict, "SKIP")
         verdict_class = {"trade": "go", "reduce": "caution", "skip": "stop"}.get(verdict, "stop")
 
+        # Event indicator
+        crit = s.get("critical_events", 0)
+        event_indicator = ""
+        if crit > 0:
+            event_indicator = f'<span class="event-dot" title="{crit} critical event(s) in window">⚠ {crit}</span>'
+
         rows_html += f"""
         <a class="ticker-card" href="{s['url']}">
           <div class="verdict-badge {verdict_class}">{verdict_label}</div>
@@ -92,7 +108,7 @@ def build_index(summaries: list[dict]) -> None:
             <div class="ticker-gex {net_class}">{net_sign}{net_m:.0f}M</div>
           </div>
           <div class="ticker-row dim">
-            <div>Wall ${s['call_wall']:.0f} · Flip ${s['gamma_flip'] or '-'}</div>
+            <div>Wall ${s['call_wall']:.0f} · Flip ${s['gamma_flip'] or '-'} {event_indicator}</div>
             <div class="regime {regime_class}">{s['regime'].upper()}</div>
           </div>
         </a>"""
@@ -171,6 +187,10 @@ def build_index(summaries: list[dict]) -> None:
   .verdict-badge.go {{ color: var(--phosphor); border-color: var(--phosphor); }}
   .verdict-badge.caution {{ color: var(--amber); border-color: var(--amber); }}
   .verdict-badge.stop {{ color: var(--text-muted); border-color: var(--grid); }}
+  .event-dot {{
+    color: var(--amber); margin-left: 6px; font-size: 10px;
+    letter-spacing: 0.05em;
+  }}
   .ticker-row {{
     display: flex; justify-content: space-between; align-items: baseline;
     margin-bottom: 6px;
@@ -236,10 +256,23 @@ def build_index(summaries: list[dict]) -> None:
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+    # Fetch macro events once (covers all tickers — saves duplicate API calls)
+    print(f"Fetching macro events for next 21 days...", flush=True)
+    today_d = date.today()
+    end_d = today_d + timedelta(days=21)
+    try:
+        macro_events = fetch_macro_events(today_d, end_d)
+        critical_count = sum(1 for e in macro_events if e["impact"] == "critical")
+        high_count = sum(1 for e in macro_events if e["impact"] == "high")
+        print(f"  Found {len(macro_events)} macro events ({critical_count} critical, {high_count} high)\n", flush=True)
+    except Exception as e:
+        print(f"  Warning: macro event fetch failed: {e}\n", flush=True)
+        macro_events = []
+
     print(f"Building dashboards for {len(TICKERS)} tickers...\n", flush=True)
     summaries = []
     for t in TICKERS:
-        s = build_one(t)
+        s = build_one(t, macro_events=macro_events)
         summaries.append(s)
 
     print(f"\nBuilding index page...", flush=True)
@@ -250,7 +283,12 @@ def main():
     for s in valid:
         net_m = s["net_gex"] / 1e6
         sign = "+" if net_m >= 0 else ""
-        print(f"  {s['ticker']:<6} ${s['spot']:>8.2f}  GEX {sign}{net_m:>6.0f}M  Wall ${s['call_wall']:.0f}  Flip ${s['gamma_flip']}")
+        ev_str = ""
+        if s.get("event_count"):
+            ev_str = f"  Events: {s['event_count']}"
+            if s.get("critical_events"):
+                ev_str += f" ({s['critical_events']} critical)"
+        print(f"  {s['ticker']:<6} ${s['spot']:>8.2f}  GEX {sign}{net_m:>6.0f}M  Wall ${s['call_wall']:.0f}  Verdict: {s['verdict']:<6}{ev_str}")
 
 
 if __name__ == "__main__":

@@ -61,6 +61,28 @@
     padding: 32px 24px;
   }
 
+  /* Back link */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    border: 1px solid var(--grid);
+    background: var(--bg-2);
+    margin-bottom: 24px;
+    transition: all 0.15s;
+  }
+  .back-link:hover {
+    color: var(--phosphor);
+    border-color: var(--phosphor-dim);
+    background: var(--bg-3);
+  }
+
   /* Header */
   .header {
     border-bottom: 1px solid var(--grid);
@@ -515,6 +537,83 @@
     margin-bottom: 8px;
   }
 
+  /* Events timeline */
+  .events-timeline {
+    background: var(--bg-2);
+    border: 1px solid var(--grid);
+    margin-bottom: 0;
+  }
+
+  .events-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .event-row {
+    display: grid;
+    grid-template-columns: 130px 80px 1fr auto;
+    gap: 16px;
+    padding: 14px 24px;
+    align-items: center;
+    border-bottom: 1px solid var(--grid);
+    font-size: 12px;
+  }
+  .event-row:last-child { border-bottom: none; }
+
+  .event-row.critical { background: rgba(248, 113, 113, 0.04); }
+  .event-row.high { background: rgba(251, 191, 36, 0.03); }
+
+  .event-date {
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    font-size: 12px;
+  }
+  .event-date .day {
+    color: var(--text-dim);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    margin-bottom: 2px;
+  }
+
+  .event-impact {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    padding: 3px 8px;
+    border: 1px solid;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .event-impact.critical { color: var(--red); border-color: var(--red); }
+  .event-impact.high { color: var(--amber); border-color: var(--amber); }
+  .event-impact.medium { color: var(--text-dim); border-color: var(--grid); }
+
+  .event-title {
+    color: var(--text);
+    font-size: 13px;
+  }
+  .event-title .meta {
+    color: var(--text-muted);
+    font-size: 10px;
+    margin-top: 2px;
+    letter-spacing: 0.05em;
+  }
+
+  .event-window {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-align: right;
+  }
+  .event-window.before { color: var(--amber); }
+  .event-window.after { color: var(--text-dim); }
+
+  .events-empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+  }
+
   .thesis-card {
     background: var(--bg-2);
     padding: 24px;
@@ -626,6 +725,8 @@
 
 <div class="container">
 
+  <a href="index.html" class="back-link">← All tickers</a>
+
   <!-- HEADER -->
   <div class="header">
     <div class="header-left">
@@ -682,9 +783,18 @@
 
   <div id="trade-recommendation"></div>
 
-  <!-- CHART -->
+  <!-- UPCOMING EVENTS -->
   <div class="section-label">
     <span class="num">[02]</span>
+    <span class="title">Events in trade window</span>
+    <span class="line"></span>
+  </div>
+
+  <div id="events-section" class="events-timeline"></div>
+
+  <!-- CHART -->
+  <div class="section-label">
+    <span class="num">[03]</span>
     <span class="title">GEX by strike</span>
     <span class="line"></span>
   </div>
@@ -703,7 +813,7 @@
 
   <!-- TRADE THESIS -->
   <div class="section-label">
-    <span class="num">[03]</span>
+    <span class="num">[04]</span>
     <span class="title">Calendar spread thesis</span>
     <span class="line"></span>
   </div>
@@ -733,7 +843,7 @@
 
   <!-- STRIKE TABLE -->
   <div class="section-label">
-    <span class="num">[04]</span>
+    <span class="num">[05]</span>
     <span class="title">Strike-level detail</span>
     <span class="line"></span>
   </div>
@@ -757,7 +867,7 @@
 
   <!-- EXPIRY BREAKDOWN -->
   <div class="section-label">
-    <span class="num">[05]</span>
+    <span class="num">[06]</span>
     <span class="title">Expiry concentration</span>
     <span class="line"></span>
   </div>
@@ -1194,9 +1304,80 @@ function buildTradeRecommendation() {
     </div>`;
 }
 
+// Build the upcoming events timeline
+function buildEvents() {
+  const container = document.getElementById('events-section');
+  const rec = DATA.trade_recommendation;
+  const events = (rec && rec.events) || [];
+  const trade = rec && rec.trade;
+
+  if (events.length === 0) {
+    container.innerHTML = '<div class="events-empty">No notable events in the trade window.</div>';
+    return;
+  }
+
+  // Reference dates for window classification
+  const frontExp = trade ? new Date(trade.front.expiry + 'T16:00:00-04:00') : null;
+  const backExp = trade ? new Date(trade.back.expiry + 'T16:00:00-04:00') : null;
+
+  const fmtDay = (d) => d.toLocaleDateString('en-GB', {
+    weekday: 'short', timeZone: 'Asia/Kuala_Lumpur'
+  }).toUpperCase();
+  const fmtDate = (d) => d.toLocaleDateString('en-GB', {
+    day: '2-digit', month: 'short', timeZone: 'Asia/Kuala_Lumpur'
+  });
+  const fmtTime = (d) => d.toLocaleTimeString('en-GB', {
+    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kuala_Lumpur'
+  });
+
+  let html = '<div class="events-list">';
+  for (const e of events) {
+    const dt = new Date(e.date);
+    const dayLabel = fmtDay(dt);
+    const dateLabel = fmtDate(dt);
+    const timeLabel = fmtTime(dt) + ' MYT';
+
+    // Window classification
+    let windowLabel = '';
+    let windowClass = '';
+    if (frontExp && dt <= frontExp) {
+      windowLabel = 'BEFORE FRONT EXPIRY';
+      windowClass = 'before';
+    } else if (backExp && dt <= backExp) {
+      windowLabel = 'AFTER FRONT EXPIRY';
+      windowClass = 'after';
+    } else {
+      windowLabel = 'OUTSIDE WINDOW';
+      windowClass = 'after';
+    }
+
+    const meta = [];
+    if (e.forecast) meta.push(`Forecast ${e.forecast}`);
+    if (e.previous) meta.push(`Previous ${e.previous}`);
+    if (e.type === 'earnings' && e.time_of_day) meta.push(e.time_of_day.replace('time-', ''));
+
+    html += `
+      <div class="event-row ${e.impact}">
+        <div class="event-date">
+          <div class="day">${dayLabel} · ${dateLabel}</div>
+          ${timeLabel}
+        </div>
+        <div class="event-impact ${e.impact}">${e.impact}</div>
+        <div class="event-title">
+          ${e.title}
+          ${meta.length ? `<div class="meta">${meta.join(' · ')}</div>` : ''}
+        </div>
+        <div class="event-window ${windowClass}">${windowLabel}</div>
+      </div>`;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
 // Init
 populateHeader();
 buildTradeRecommendation();
+buildEvents();
 buildChart();
 buildStrikeTable();
 buildExpiryTable();

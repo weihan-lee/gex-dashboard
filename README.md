@@ -56,16 +56,25 @@ git push -u origin main
 ## What it does
 
 - Runs Python on GitHub's servers (free, no laptop required)
-- Pulls fresh CBOE quotes every hour during market hours + EOD snapshot
-- Builds dashboards for all 6 tickers + an index page
+- Pulls fresh CBOE quotes every 30 min during peak market hours, hourly otherwise
+- Pulls macro events (NFP, FOMC, CPI etc) from Forex Factory
+- Pulls earnings dates per ticker from Nasdaq
+- Computes Gamma Exposure (GEX) per strike
+- Generates calendar spread trade recommendations with concrete strike, expiries, debit, stop, target
+- Auto-downgrades verdict from TRADE → REDUCE if critical events fall in window
+- Builds per-ticker dashboards + index page
 - Publishes to your public GitHub Pages URL
-- You bookmark the URL — always shows latest data
+- Bookmark the URL — always shows latest data
 
 ## Schedule (edit in `.github/workflows/build.yml`)
 
+The schedule uses **redundant cron triggers** to combat GitHub Actions queue
+delays during peak hours. Each target time fires twice (e.g. 9:25 AM and 9:35 AM
+for the 9:30 AM target) so at least one fires close to the intended time.
+
 **First 4 hours of US market — every 30 minutes** (most active price discovery)
 
-| ET | MYT |
+| Target ET | MYT |
 |---|---|
 | 9:30 AM (open) | 9:30 PM |
 | 10:00 AM | 10:00 PM |
@@ -79,7 +88,7 @@ git push -u origin main
 
 **Rest of market + post-close — every hour**
 
-| ET | MYT |
+| Target ET | MYT |
 |---|---|
 | 2:30 PM | 2:30 AM |
 | 3:30 PM | 3:30 AM |
@@ -90,9 +99,10 @@ git push -u origin main
 
 | UTC | MYT |
 |---|---|
-| 01:00 | 9:00 AM |
+| 01:00 + 01:15 | 9:00 / 9:15 AM |
 
-Total: ~14 builds per US trading day. You can also trigger manually anytime via Actions tab → Run workflow.
+Total: ~26 builds per US trading day. You can also trigger manually anytime
+via Actions tab → Run workflow.
 
 ## Add to phone home screen (iPhone)
 
