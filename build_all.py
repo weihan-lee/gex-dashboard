@@ -14,6 +14,7 @@ from datetime import datetime, timezone, timedelta
 
 from aapl_gex_fetcher import fetch_cboe_chain, compute_gex
 from refresh_dashboard import filter_for_dashboard, build_dashboard
+from trade_engine import build_trade_recommendation
 
 # Display timezone for the dashboard (GMT+8, Malaysia/Singapore time)
 DISPLAY_TZ = timezone(timedelta(hours=8))
@@ -35,7 +36,13 @@ def build_one(ticker: str) -> dict | None:
         print(f"  Fetching {ticker}...", flush=True)
         raw = fetch_cboe_chain(ticker)
         result = compute_gex(raw, ticker, days_forward=28)
+
+        # Generate trade recommendation
+        trade_rec = build_trade_recommendation(result, raw, ticker)
+
         dashboard_data = filter_for_dashboard(result, range_pct=0.10)
+        # Inject the trade recommendation into dashboard data
+        dashboard_data["trade_recommendation"] = trade_rec
 
         out_path = os.path.join(OUTPUT_DIR, f"{ticker.lower()}.html")
         build_dashboard(dashboard_data, TEMPLATE, out_path)
@@ -50,6 +57,8 @@ def build_one(ticker: str) -> dict | None:
             "put_wall": result["put_wall"]["strike"],
             "gamma_flip": result["gamma_flip"],
             "url": f"{ticker.lower()}.html",
+            "verdict": trade_rec["verdict"]["action"] if trade_rec else "skip",
+            "has_trade": bool(trade_rec and trade_rec.get("trade")),
         }
     except Exception as e:
         print(f"  ERROR on {ticker}: {e}", flush=True)
@@ -67,9 +76,13 @@ def build_index(summaries: list[dict]) -> None:
         net_class = "pos" if net_m >= 0 else "neg"
         net_sign = "+" if net_m >= 0 else ""
         regime_class = "go" if s["regime"] == "positive" else "stop"
+        verdict = s.get("verdict", "skip")
+        verdict_label = {"trade": "TRADE", "reduce": "REDUCE", "skip": "SKIP"}.get(verdict, "SKIP")
+        verdict_class = {"trade": "go", "reduce": "caution", "skip": "stop"}.get(verdict, "stop")
 
         rows_html += f"""
         <a class="ticker-card" href="{s['url']}">
+          <div class="verdict-badge {verdict_class}">{verdict_label}</div>
           <div class="ticker-row">
             <div class="ticker-name">{s['ticker']}</div>
             <div class="ticker-spot">${s['spot']:.2f}</div>
@@ -150,6 +163,14 @@ def build_index(summaries: list[dict]) -> None:
     border-color: var(--phosphor-dim); background: var(--bg-3);
     transform: translateX(2px);
   }}
+  .verdict-badge {{
+    position: absolute; top: 12px; right: 12px;
+    font-size: 9px; letter-spacing: 0.2em; padding: 3px 8px;
+    border: 1px solid; font-weight: 500;
+  }}
+  .verdict-badge.go {{ color: var(--phosphor); border-color: var(--phosphor); }}
+  .verdict-badge.caution {{ color: var(--amber); border-color: var(--amber); }}
+  .verdict-badge.stop {{ color: var(--text-muted); border-color: var(--grid); }}
   .ticker-row {{
     display: flex; justify-content: space-between; align-items: baseline;
     margin-bottom: 6px;
@@ -157,7 +178,7 @@ def build_index(summaries: list[dict]) -> None:
   .ticker-row.dim {{ font-size: 10px; color: var(--text-muted); margin-top: 8px; }}
   .ticker-name {{
     font-family: 'Fraunces', serif; font-size: 28px; font-weight: 400;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.02em; padding-right: 80px;
   }}
   .ticker-spot {{
     font-family: 'Fraunces', serif; font-size: 22px; color: var(--text);
