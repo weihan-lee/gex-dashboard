@@ -65,22 +65,23 @@
   .back-link {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    color: var(--text-dim);
+    gap: 8px;
+    color: var(--phosphor);
     text-decoration: none;
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    padding: 8px 14px;
-    border: 1px solid var(--grid);
+    padding: 10px 16px;
+    border: 1px solid var(--phosphor-dim);
     background: var(--bg-2);
     margin-bottom: 24px;
     transition: all 0.15s;
+    font-weight: 500;
   }
   .back-link:hover {
-    color: var(--phosphor);
-    border-color: var(--phosphor-dim);
-    background: var(--bg-3);
+    color: var(--text);
+    border-color: var(--phosphor);
+    background: var(--phosphor-dim);
   }
 
   /* Header */
@@ -495,6 +496,107 @@
 
   .events {
     padding: 16px 24px;
+  }
+
+  /* Log Trade button */
+  .trade-actions {
+    padding: 16px 24px;
+    border-top: 1px solid var(--grid);
+    display: flex;
+    justify-content: flex-end;
+  }
+  .log-trade-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: var(--phosphor-dim);
+    border: 1px solid var(--phosphor);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .log-trade-btn:hover {
+    background: var(--phosphor);
+    color: var(--bg);
+  }
+
+  /* Critical events inside trade card */
+  .critical-events {
+    border-top: 1px solid var(--grid);
+    background: rgba(248, 113, 113, 0.04);
+  }
+  .critical-events-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--grid);
+  }
+  .critical-events-header .ce-tag {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--amber);
+    font-weight: 500;
+  }
+  .critical-events-header .ce-count {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+  }
+  .ce-row {
+    display: grid;
+    grid-template-columns: 200px 90px 1fr;
+    gap: 16px;
+    padding: 10px 24px;
+    align-items: center;
+    font-size: 12px;
+    border-bottom: 1px dashed var(--grid);
+  }
+  .ce-row:last-child { border-bottom: none; }
+  .ce-row.critical { background: rgba(248, 113, 113, 0.04); }
+
+  .ce-when {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .ce-when .ce-day {
+    color: var(--text-dim);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-right: 4px;
+  }
+  .ce-when .ce-time {
+    color: var(--text-muted);
+    margin-left: 8px;
+    font-size: 11px;
+  }
+  .ce-impact {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    padding: 3px 8px;
+    border: 1px solid;
+    text-align: center;
+    text-transform: uppercase;
+    width: fit-content;
+  }
+  .ce-impact.critical { color: var(--red); border-color: var(--red); }
+  .ce-impact.high { color: var(--amber); border-color: var(--amber); }
+  .ce-title {
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  @media (max-width: 600px) {
+    .ce-row {
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
   }
 
   .event {
@@ -1286,7 +1388,48 @@ function buildTradeRecommendation() {
       `).join('')}
     </div>` : '';
 
+  // Critical macro/earnings events in window — list inline in the trade card
+  const criticalEvents = ((rec && rec.events) || []).filter(e =>
+    e.impact === 'critical' || e.impact === 'high'
+  );
+  const criticalEventsHtml = criticalEvents.length ? `
+    <div class="critical-events">
+      <div class="critical-events-header">
+        <span class="ce-tag">⚠ EVENTS IN WINDOW</span>
+        <span class="ce-count">${criticalEvents.length} ${criticalEvents.length === 1 ? 'event' : 'events'}</span>
+      </div>
+      ${criticalEvents.map(ev => {
+        const dt = new Date(ev.date);
+        const day = dt.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'Asia/Kuala_Lumpur' });
+        const dateLabel = dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'Asia/Kuala_Lumpur' });
+        const timeLabel = dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kuala_Lumpur' });
+        return `
+          <div class="ce-row ${ev.impact}">
+            <div class="ce-when">
+              <span class="ce-day">${day}</span> ${dateLabel}
+              <span class="ce-time">${timeLabel} MYT</span>
+            </div>
+            <div class="ce-impact ${ev.impact}">${ev.impact}</div>
+            <div class="ce-title">${ev.title}</div>
+          </div>`;
+      }).join('')}
+    </div>` : '';
+
   const actionLabel = action === 'trade' ? 'Trade' : action === 'reduce' ? 'Reduce size' : 'Skip';
+
+  // Build "Log this trade" link with all params pre-filled
+  const notes = `GEX call wall, IV ${trade.context.iv30.toFixed(1)}%`;
+  const logUrl = 'trades.html?' + new URLSearchParams({
+    action: 'add',
+    ticker: trade.ticker,
+    strike: trade.strike,
+    front: trade.front.expiry,
+    back: trade.back.expiry,
+    debit: trade.entry.debit.toFixed(2),
+    stop: trade.exit.stop_value.toFixed(2),
+    target: trade.exit.target_value.toFixed(2),
+    notes: notes,
+  }).toString();
 
   container.innerHTML = `
     <div class="trade-card ${action}">
@@ -1300,7 +1443,11 @@ function buildTradeRecommendation() {
       </div>
       ${legsHtml}
       ${levelsHtml}
+      ${criticalEventsHtml}
       ${eventsHtml}
+      <div class="trade-actions">
+        <a href="${logUrl}" class="log-trade-btn">📔 Log This Trade</a>
+      </div>
     </div>`;
 }
 
