@@ -9,7 +9,6 @@ on:
   workflow_dispatch:
 
   push:
-    # Triggers on any push (works whether default is main or master)
 
 permissions:
   contents: read
