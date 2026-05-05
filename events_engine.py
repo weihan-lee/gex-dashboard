@@ -207,34 +207,11 @@ def get_events_for_window(ticker: str, start: date, end: date,
 def adjust_verdict_for_events(verdict: dict, events: list[dict],
                                front_expiry: date) -> dict:
     """
-    Downgrade trade verdict if critical events fall in the window.
+    Events are displayed as advisory warnings but do NOT change the verdict.
+    GEX + IV alone determine the verdict (trade / reduce / skip).
+    User decides whether events warrant a smaller size or skipping.
     """
-    critical_in_window = [
-        e for e in events
-        if e["impact"] == "critical"
-        and date.fromisoformat(e["date"][:10]) <= front_expiry
-    ]
-
-    if not critical_in_window:
-        return verdict
-
-    new_verdict = dict(verdict)
-    if len(critical_in_window) >= 2:
-        if verdict["action"] == "trade":
-            new_verdict["action"] = "skip"
-            new_verdict["reasons"] = list(verdict["reasons"]) + [
-                f"{len(critical_in_window)} critical events in window — too risky"
-            ]
-    elif critical_in_window:
-        if verdict["action"] == "trade":
-            new_verdict["action"] = "reduce"
-            ev = critical_in_window[0]
-            ev_date = date.fromisoformat(ev["date"][:10])
-            new_verdict["reasons"] = list(verdict["reasons"]) + [
-                f"⚠ {ev['title']} on {ev_date.strftime('%a %d %b')}"
-            ]
-
-    return new_verdict
+    return verdict
 
 
 if __name__ == "__main__":
