@@ -2,18 +2,17 @@ name: Build GEX Dashboard
 
 on:
   schedule:
-    # Every 30 minutes during US market hours (Mon-Fri, 13:30-21:00 UTC)
-    # Note: GitHub's cron is best-effort; expect 5-30 min delays at peak times.
-    # Fewer cron entries = more reliable triggering.
-    - cron: '*/30 13-21 * * 1-5'
+    # Every 20 minutes during US market hours (Mon-Fri, 13:30-21:00 UTC)
+    # Note: GitHub's cron is "best-effort" and can be delayed by 5-30 mins.
+    - cron: '*/20 13-21 * * 1-5'
 
     # Once daily at 9 AM MYT (1 AM UTC) for evening review
     - cron: '0 1 * * 2-6'
 
-  workflow_dispatch:
+  workflow_dispatch: # Allows you to run this manually from the Actions tab
 
   push:
-    branches: [main]
+    branches: [main] # Runs whenever you push code to main
 
 permissions:
   contents: read
@@ -35,6 +34,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip' # Optional: speeds up builds if you have a requirements.txt
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Build all dashboards
         run: python build_all.py
