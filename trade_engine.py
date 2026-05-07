@@ -229,11 +229,11 @@ def build_trade_recommendation(ticker_data: dict, raw_chain: dict, ticker: str,
                                 today: date | None = None,
                                 events: list[dict] | None = None) -> dict | None:
     """
-    Build a complete calendar spread trade recommendation.
-    Returns None if conditions don't support a trade.
+    Build a complete trade recommendation comparing calendar spread vs iron condor.
+    Returns the better-scoring strategy as the primary, with both included for display.
 
     If `events` is provided (list of macro/earnings events from events_engine),
-    the verdict will be downgraded if critical events fall in the window.
+    they are passed through but do not change the verdict (advisory only).
     """
     if today is None:
         today = date.today()
@@ -242,6 +242,71 @@ def build_trade_recommendation(ticker_data: dict, raw_chain: dict, ticker: str,
     if verdict["action"] == "skip":
         return {"verdict": verdict, "trade": None, "events": events or []}
 
+    # Build calendar spread (existing logic returns full structure)
+    calendar_result = _build_calendar_only(ticker_data, raw_chain, ticker, today)
+
+    # Build iron condor on the same front expiry (if calendar succeeded)
+    chain_idx = index_chain(raw_chain, ticker)
+    spot = ticker_data["spot"]
+    expiries = find_weekly_expiries(chain_idx, today, gap_days=7, spot=spot)
+    condor_result = None
+    if expiries:
+        from condor_engine import build_iron_condor
+        front_exp, _, front_dte, _ = expiries
+        condor_result = build_iron_condor(ticker_data, raw_chain, chain_idx, ticker,
+                                            front_exp, front_dte,
+                                            short_delta_target=0.15, wing_width=5.0)
+
+    # Compare and pick the better one
+    from condor_engine import calc_calendar_score, calc_condor_score
+    cal_trade = calendar_result.get("trade") if calendar_result else None
+    condor_trade = condor_result if condor_result and not condor_result.get("error") else None
+
+    cal_score = calc_calendar_score(cal_trade, ticker_data) if cal_trade else 0
+    condor_score = calc_condor_score(condor_trade, ticker_data) if condor_trade else 0
+
+    if cal_score >= condor_score and cal_trade:
+        chosen = "calendar"
+        primary_trade = cal_trade
+    elif condor_trade:
+        chosen = "iron_condor"
+        primary_trade = condor_trade
+    else:
+        chosen = "none"
+        primary_trade = None
+
+    # Filter events to those within trade window
+    relevant_events = []
+    if events and primary_trade:
+        # For calendar, window = today through front expiry
+        # For condor, window = today through expiry
+        if chosen == "calendar":
+            front_exp_dt = datetime.strptime(primary_trade["front"]["expiry"], "%Y-%m-%d").date()
+        else:
+            front_exp_dt = datetime.strptime(primary_trade["expiry"], "%Y-%m-%d").date()
+        for ev in events:
+            try:
+                ev_date = date.fromisoformat(ev["date"][:10])
+                if today <= ev_date <= front_exp_dt:
+                    relevant_events.append(ev)
+            except (ValueError, KeyError):
+                continue
+
+    return {
+        "verdict": verdict,
+        "events": relevant_events,
+        "trade": primary_trade,
+        "chosen_strategy": chosen,
+        "calendar_score": cal_score,
+        "condor_score": condor_score,
+        "calendar_trade": cal_trade,
+        "condor_trade": condor_trade,
+    }
+
+
+def _build_calendar_only(ticker_data: dict, raw_chain: dict, ticker: str,
+                          today: date) -> dict | None:
+    """Original calendar-only builder (refactored from main function)."""
     chain_idx = index_chain(raw_chain, ticker)
     spot = ticker_data["spot"]
     call_wall = ticker_data["call_wall"]["strike"]
@@ -251,8 +316,7 @@ def build_trade_recommendation(ticker_data: dict, raw_chain: dict, ticker: str,
     # Find expiry pair
     expiries = find_weekly_expiries(chain_idx, today, gap_days=7, spot=spot)
     if not expiries:
-        return {"verdict": verdict, "trade": None,
-                "error": "No suitable weekly expiries found"}
+        return None  # No suitable weekly expiries found
 
     front_exp, back_exp, front_dte, back_dte = expiries
 
@@ -272,26 +336,22 @@ def build_trade_recommendation(ticker_data: dict, raw_chain: dict, ticker: str,
             if chosen_strike:
                 break
     if not chosen_strike:
-        return {"verdict": verdict, "trade": None,
-                "error": "No liquid strikes for selected expiries"}
+        return None  # No liquid strikes for selected expiries
 
     # Get the legs
     front_leg = chain_idx.get((front_exp, "C", chosen_strike))
     back_leg = chain_idx.get((back_exp, "C", chosen_strike))
     if not front_leg or not back_leg:
-        return {"verdict": verdict, "trade": None,
-                "error": "Missing leg data"}
+        return None  # Missing leg data
 
     front_mid = get_mid(front_leg)
     back_mid = get_mid(back_leg)
     if front_mid is None or back_mid is None:
-        return {"verdict": verdict, "trade": None,
-                "error": "Invalid bid/ask on legs"}
+        return None  # Invalid bid/ask on legs
 
     debit = back_mid - front_mid
     if debit <= 0:
-        return {"verdict": verdict, "trade": None,
-                "error": "Negative debit (back leg cheaper than front)"}
+        return None  # Negative debit (back leg cheaper than front)
 
     # Per-contract dollars (×100 multiplier)
     debit_dollars = debit * 100
@@ -346,24 +406,7 @@ def build_trade_recommendation(ticker_data: dict, raw_chain: dict, ticker: str,
         close_by_date = previous_trading_day(front_exp_dt)
         close_by_note = "by close (previous trading day)"
 
-    # Filter events to those within trade window (today through front expiry)
-    relevant_events = []
-    if events:
-        for ev in events:
-            try:
-                ev_date = date.fromisoformat(ev["date"][:10])
-                if today <= ev_date <= front_exp_dt:
-                    relevant_events.append(ev)
-            except (ValueError, KeyError):
-                continue
-
-    # Apply event-based verdict downgrade
-    from events_engine import adjust_verdict_for_events
-    final_verdict = adjust_verdict_for_events(verdict, relevant_events, front_exp_dt)
-
     return {
-        "verdict": final_verdict,
-        "events": relevant_events,
         "trade": {
             "ticker": ticker,
             "structure": "Call Calendar Spread",

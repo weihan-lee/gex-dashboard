@@ -354,6 +354,73 @@
     overflow: hidden;
   }
 
+  /* Strategy tabs */
+  .strategy-tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--grid);
+    background: var(--bg-3);
+    flex-wrap: wrap;
+  }
+  .strategy-tab {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid var(--grid);
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .strategy-tab:hover { color: var(--text); border-color: var(--text-muted); }
+  .strategy-tab.active {
+    background: var(--bg-2);
+    color: var(--phosphor);
+    border-color: var(--phosphor-dim);
+  }
+  .strategy-tab .score {
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: lowercase;
+  }
+  .strategy-tab.active .score { color: var(--phosphor-dim); }
+  .recommended-tag {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    font-style: italic;
+  }
+
+  /* Iron condor 4-leg layout */
+  .condor-legs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    border-bottom: 1px solid var(--grid);
+  }
+  .condor-leg {
+    padding: 16px 20px;
+    border-right: 1px solid var(--grid);
+    border-bottom: 1px solid var(--grid);
+  }
+  .condor-leg:nth-child(2n) { border-right: none; }
+  .condor-leg:nth-last-child(-n+2) { border-bottom: none; }
+  @media (max-width: 600px) {
+    .condor-legs { grid-template-columns: 1fr; }
+    .condor-leg { border-right: none; border-bottom: 1px solid var(--grid); }
+    .condor-leg:last-child { border-bottom: none; }
+    .strategy-tabs { padding: 8px 12px; gap: 6px; }
+    .recommended-tag { width: 100%; margin-left: 0; margin-top: 4px; }
+  }
+
   .trade-card.trade { border-color: var(--phosphor-dim); }
   .trade-card.reduce { border-color: var(--amber-dim); }
   .trade-card.skip { border-color: var(--red-dim); }
@@ -1282,23 +1349,23 @@ function buildTradeRecommendation() {
   }
 
   const action = rec.verdict.action;
-  const trade = rec.trade;
+  const chosen = rec.chosen_strategy || 'calendar';
+  const calTrade = rec.calendar_trade;
+  const condorTrade = rec.condor_trade;
 
   // Helper formatters
-  const $ = (n) => '$' + n.toFixed(2);
-  const $0 = (n) => '$' + n.toFixed(0);
-  const $$ = (n) => (n >= 0 ? '+' : '') + '$' + n.toFixed(0);
-
-  // Format dates as e.g. "Fri 8 May"
+  const $ = (n) => '$' + Number(n).toFixed(2);
+  const $0 = (n) => '$' + Number(n).toFixed(0);
+  const $$ = (n) => (n >= 0 ? '+' : '') + '$' + Number(n).toFixed(0);
   const fmtDate = (s) => {
     const d = new Date(s + 'T00:00:00');
     return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
   };
 
-  if (!trade) {
-    const errorMsg = rec.error || (action === 'skip'
+  if (!calTrade && !condorTrade) {
+    const errorMsg = action === 'skip'
       ? 'Conditions are not favorable for entry.'
-      : 'Unable to find a suitable spread structure.');
+      : 'Unable to find a suitable spread structure.';
     container.innerHTML = `
       <div class="trade-card ${action}">
         <div class="trade-header">
@@ -1314,81 +1381,7 @@ function buildTradeRecommendation() {
     return;
   }
 
-  // Build legs
-  const legsHtml = `
-    <div class="legs">
-      <div class="leg">
-        <div class="leg-action sell">SELL TO OPEN · FRONT</div>
-        <div class="leg-strike">${$0(trade.strike)} CALL</div>
-        <div class="leg-detail">${fmtDate(trade.front.expiry)} · ${trade.front.dte} DTE</div>
-        <div class="leg-price">
-          <span class="label">MID</span>${$(trade.front.mid)}
-          <span class="label" style="margin-left:12px">B/A</span>${$(trade.front.bid)} / ${$(trade.front.ask)}
-        </div>
-        <div class="leg-detail" style="margin-top:6px">OI ${trade.front.oi.toLocaleString()} · IV ${(trade.front.iv).toFixed(1)}%</div>
-      </div>
-      <div class="leg">
-        <div class="leg-action buy">BUY TO OPEN · BACK</div>
-        <div class="leg-strike">${$0(trade.strike)} CALL</div>
-        <div class="leg-detail">${fmtDate(trade.back.expiry)} · ${trade.back.dte} DTE</div>
-        <div class="leg-price">
-          <span class="label">MID</span>${$(trade.back.mid)}
-          <span class="label" style="margin-left:12px">B/A</span>${$(trade.back.bid)} / ${$(trade.back.ask)}
-        </div>
-        <div class="leg-detail" style="margin-top:6px">OI ${trade.back.oi.toLocaleString()} · IV ${(trade.back.iv).toFixed(1)}%</div>
-      </div>
-    </div>`;
-
-  // Levels
-  const levelsHtml = `
-    <div class="levels">
-      <div class="level">
-        <div class="level-label">Entry Debit</div>
-        <div class="level-value entry">${$(trade.entry.debit)}</div>
-        <div class="level-sub">${$0(trade.entry.debit_dollars)} / contract</div>
-      </div>
-      <div class="level">
-        <div class="level-label">Stop @ 50%</div>
-        <div class="level-value stop">${$(trade.exit.stop_value)}</div>
-        <div class="level-sub">Loss ${$$(- trade.exit.stop_loss_dollars)}</div>
-      </div>
-      <div class="level">
-        <div class="level-label">Target @ 50%</div>
-        <div class="level-value target">${$(trade.exit.target_value)}</div>
-        <div class="level-sub">Gain ${$$(trade.exit.take_profit_dollars)}</div>
-      </div>
-      <div class="level">
-        <div class="level-label">Max Profit Est.</div>
-        <div class="level-value maxp">${$$(trade.exit.max_profit_dollars)}</div>
-        <div class="level-sub">if pinned at ${$0(trade.strike)}</div>
-      </div>
-      <div class="level">
-        <div class="level-label">Breakevens</div>
-        <div class="level-value entry">${$(trade.breakevens.lower)}</div>
-        <div class="level-sub">to ${$(trade.breakevens.upper)} (±${trade.breakevens.width_pct.toFixed(1)}%)</div>
-      </div>
-      <div class="level">
-        <div class="level-label">Close By</div>
-        <div class="level-value entry" style="font-size:18px">${fmtDate(trade.exit.close_by)}</div>
-        <div class="level-sub">${trade.exit.close_by_note || 'before front expiry'}</div>
-      </div>
-    </div>`;
-
-  // GEX events
-  const eventsHtml = trade.gex_events && trade.gex_events.length ? `
-    <div class="events">
-      ${trade.gex_events.map(ev => `
-        <div class="event">
-          <div class="event-tag ${ev.type}">${ev.type}</div>
-          <div class="event-text">
-            <div class="label">${ev.label}</div>
-            <div class="detail">${ev.detail}</div>
-          </div>
-        </div>
-      `).join('')}
-    </div>` : '';
-
-  // Critical macro/earnings events in window — list inline in the trade card
+  // Critical events block (shared across both strategies)
   const criticalEvents = ((rec && rec.events) || []).filter(e =>
     e.impact === 'critical' || e.impact === 'high'
   );
@@ -1417,22 +1410,103 @@ function buildTradeRecommendation() {
 
   const actionLabel = action === 'trade' ? 'Trade' : action === 'reduce' ? 'Reduce size' : 'Skip';
 
-  // Build "Log this trade" link with all params pre-filled
-  const notes = `GEX call wall, IV ${trade.context.iv30.toFixed(1)}%`;
-  const logUrl = 'trades.html?' + new URLSearchParams({
-    action: 'add',
-    ticker: trade.ticker,
-    strike: trade.strike,
-    front: trade.front.expiry,
-    back: trade.back.expiry,
-    debit: trade.entry.debit.toFixed(2),
-    stop: trade.exit.stop_value.toFixed(2),
-    target: trade.exit.target_value.toFixed(2),
-    notes: notes,
-  }).toString();
+  // Build the strategy tabs
+  const tabsHtml = (calTrade && condorTrade) ? `
+    <div class="strategy-tabs">
+      <button class="strategy-tab ${chosen === 'calendar' ? 'active' : ''}" data-strategy="calendar">
+        Calendar Spread
+        <span class="score">score ${rec.calendar_score}</span>
+      </button>
+      <button class="strategy-tab ${chosen === 'iron_condor' ? 'active' : ''}" data-strategy="iron_condor">
+        Iron Condor
+        <span class="score">score ${rec.condor_score}</span>
+      </button>
+      <span class="recommended-tag">${chosen === 'calendar' ? 'Calendar' : 'Iron Condor'} better fits current conditions</span>
+    </div>` : '';
 
-  container.innerHTML = `
-    <div class="trade-card ${action}">
+  // Renderers for each strategy body
+  function renderCalendarBody(trade) {
+    const legs = `
+      <div class="legs">
+        <div class="leg">
+          <div class="leg-action sell">SELL TO OPEN · FRONT</div>
+          <div class="leg-strike">${$0(trade.strike)} CALL</div>
+          <div class="leg-detail">${fmtDate(trade.front.expiry)} · ${trade.front.dte} DTE</div>
+          <div class="leg-price">
+            <span class="label">MID</span>${$(trade.front.mid)}
+            <span class="label" style="margin-left:12px">B/A</span>${$(trade.front.bid)} / ${$(trade.front.ask)}
+          </div>
+          <div class="leg-detail" style="margin-top:6px">OI ${trade.front.oi.toLocaleString()} · IV ${(trade.front.iv).toFixed(1)}%</div>
+        </div>
+        <div class="leg">
+          <div class="leg-action buy">BUY TO OPEN · BACK</div>
+          <div class="leg-strike">${$0(trade.strike)} CALL</div>
+          <div class="leg-detail">${fmtDate(trade.back.expiry)} · ${trade.back.dte} DTE</div>
+          <div class="leg-price">
+            <span class="label">MID</span>${$(trade.back.mid)}
+            <span class="label" style="margin-left:12px">B/A</span>${$(trade.back.bid)} / ${$(trade.back.ask)}
+          </div>
+          <div class="leg-detail" style="margin-top:6px">OI ${trade.back.oi.toLocaleString()} · IV ${(trade.back.iv).toFixed(1)}%</div>
+        </div>
+      </div>`;
+
+    const levels = `
+      <div class="levels">
+        <div class="level">
+          <div class="level-label">Entry Debit</div>
+          <div class="level-value entry">${$(trade.entry.debit)}</div>
+          <div class="level-sub">${$0(trade.entry.debit_dollars)} / contract</div>
+        </div>
+        <div class="level">
+          <div class="level-label">Stop @ 50%</div>
+          <div class="level-value stop">${$(trade.exit.stop_value)}</div>
+          <div class="level-sub">Loss ${$$(- trade.exit.stop_loss_dollars)}</div>
+        </div>
+        <div class="level">
+          <div class="level-label">Target @ 50%</div>
+          <div class="level-value target">${$(trade.exit.target_value)}</div>
+          <div class="level-sub">Gain ${$$(trade.exit.take_profit_dollars)}</div>
+        </div>
+        <div class="level">
+          <div class="level-label">Max Profit Est.</div>
+          <div class="level-value maxp">${$$(trade.exit.max_profit_dollars)}</div>
+          <div class="level-sub">if pinned at ${$0(trade.strike)}</div>
+        </div>
+        <div class="level">
+          <div class="level-label">Breakevens</div>
+          <div class="level-value entry">${$(trade.breakevens.lower)}</div>
+          <div class="level-sub">to ${$(trade.breakevens.upper)} (±${trade.breakevens.width_pct.toFixed(1)}%)</div>
+        </div>
+        <div class="level">
+          <div class="level-label">Close By</div>
+          <div class="level-value entry" style="font-size:18px">${fmtDate(trade.exit.close_by)}</div>
+          <div class="level-sub">${trade.exit.close_by_note || 'before front expiry'}</div>
+        </div>
+      </div>`;
+
+    const gexEvents = trade.gex_events && trade.gex_events.length ? `
+      <div class="events">
+        ${trade.gex_events.map(ev => `
+          <div class="event">
+            <div class="event-tag ${ev.type}">${ev.type}</div>
+            <div class="event-text">
+              <div class="label">${ev.label}</div>
+              <div class="detail">${ev.detail}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>` : '';
+
+    const logUrl = 'trades.html?' + new URLSearchParams({
+      action: 'add', ticker: trade.ticker, strike: trade.strike,
+      front: trade.front.expiry, back: trade.back.expiry,
+      debit: trade.entry.debit.toFixed(2),
+      stop: trade.exit.stop_value.toFixed(2),
+      target: trade.exit.target_value.toFixed(2),
+      notes: `Calendar · GEX call wall · IV ${trade.context.iv30.toFixed(1)}%`,
+    }).toString();
+
+    return `
       <div class="trade-header">
         <div class="trade-badge ${action}">${actionLabel}</div>
         <div class="trade-title">${trade.structure} · ${$0(trade.strike)} strike · 1 contract</div>
@@ -1441,14 +1515,126 @@ function buildTradeRecommendation() {
           R / R
         </div>
       </div>
-      ${legsHtml}
-      ${levelsHtml}
-      ${criticalEventsHtml}
-      ${eventsHtml}
+      ${legs}
+      ${levels}
+      ${gexEvents}
       <div class="trade-actions">
-        <a href="${logUrl}" class="log-trade-btn">📔 Log This Trade</a>
+        <a href="${logUrl}" class="log-trade-btn">📔 Log This Calendar</a>
+      </div>`;
+  }
+
+  function renderCondorBody(trade) {
+    const legsHtml = `
+      <div class="condor-legs">
+        ${trade.legs.map(leg => `
+          <div class="condor-leg">
+            <div class="leg-action ${leg.color}">${leg.action} · ${leg.label}</div>
+            <div class="leg-strike">${$0(leg.strike)} ${leg.type.toUpperCase()}</div>
+            <div class="leg-detail">${fmtDate(trade.expiry)} · ${trade.dte} DTE</div>
+            <div class="leg-price">
+              <span class="label">MID</span>${$(leg.mid)}
+              <span class="label" style="margin-left:8px">B/A</span>${$(leg.bid)} / ${$(leg.ask)}
+              ${leg.delta ? `<span class="label" style="margin-left:8px">Δ</span>${leg.delta.toFixed(2)}` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>`;
+
+    const levels = `
+      <div class="levels">
+        <div class="level">
+          <div class="level-label">Entry Credit</div>
+          <div class="level-value target">${$(trade.entry.credit)}</div>
+          <div class="level-sub">${$0(trade.entry.credit_dollars)} / contract</div>
+        </div>
+        <div class="level">
+          <div class="level-label">Stop @ 1x credit</div>
+          <div class="level-value stop">${$(trade.exit.stop_value)}</div>
+          <div class="level-sub">Loss ${$$(- trade.exit.stop_loss_dollars)}</div>
+        </div>
+        <div class="level">
+          <div class="level-label">Target @ 50%</div>
+          <div class="level-value target">${$(trade.exit.target_value)}</div>
+          <div class="level-sub">Gain ${$$(trade.exit.take_profit_dollars)}</div>
+        </div>
+        <div class="level">
+          <div class="level-label">Max Profit</div>
+          <div class="level-value maxp">${$$(trade.exit.max_profit_dollars)}</div>
+          <div class="level-sub">if expires between shorts</div>
+        </div>
+        <div class="level">
+          <div class="level-label">Max Loss</div>
+          <div class="level-value stop">${$$(- trade.entry.max_loss)}</div>
+          <div class="level-sub">if breaches a wing</div>
+        </div>
+        <div class="level">
+          <div class="level-label">Breakevens</div>
+          <div class="level-value entry" style="font-size:18px">${$(trade.breakevens.lower)}</div>
+          <div class="level-sub">to ${$(trade.breakevens.upper)} (±${trade.breakevens.width_pct.toFixed(1)}%)</div>
+        </div>
+        <div class="level">
+          <div class="level-label">POP Estimate</div>
+          <div class="level-value maxp">${(trade.pop_estimate * 100).toFixed(0)}%</div>
+          <div class="level-sub">prob. of profit</div>
+        </div>
+        <div class="level">
+          <div class="level-label">Close By</div>
+          <div class="level-value entry" style="font-size:18px">${fmtDate(trade.exit.close_by)}</div>
+          <div class="level-sub">${trade.exit.close_by_note}</div>
+        </div>
+      </div>`;
+
+    // For condor, log a single combined entry — we'll use the credit as "debit" (negative) in the form
+    // and short strikes as references. Since the trade log was built for calendars, simplify by passing
+    // ticker, strikes range, credit, and notes.
+    const logUrl = 'trades.html?' + new URLSearchParams({
+      action: 'add',
+      ticker: DATA.ticker,
+      strike: `${trade.short_strikes.put}/${trade.short_strikes.call}`,
+      front: trade.expiry,
+      back: trade.expiry,
+      debit: (-trade.entry.credit).toFixed(2),  // negative because it's a credit
+      stop: (-trade.exit.stop_value).toFixed(2),
+      target: (-trade.exit.target_value).toFixed(2),
+      notes: `Iron Condor · shorts ${trade.short_strikes.put}P/${trade.short_strikes.call}C · wings ${trade.wing_strikes.put}/${trade.wing_strikes.call}`,
+    }).toString();
+
+    return `
+      <div class="trade-header">
+        <div class="trade-badge ${action}">${actionLabel}</div>
+        <div class="trade-title">Iron Condor · ${$0(trade.short_strikes.put)}P / ${$0(trade.short_strikes.call)}C · 1 contract</div>
+        <div class="trade-rr">
+          <span class="big">1 : ${trade.rr_ratio.toFixed(2)}</span>
+          R / R
+        </div>
       </div>
-    </div>`;
+      ${legsHtml}
+      ${levels}
+      <div class="trade-actions">
+        <a href="${logUrl}" class="log-trade-btn">📔 Log This Condor</a>
+      </div>`;
+  }
+
+  function rebuild(strategy) {
+    const trade = strategy === 'calendar' ? calTrade : condorTrade;
+    if (!trade) return;
+    const body = strategy === 'calendar' ? renderCalendarBody(trade) : renderCondorBody(trade);
+    container.innerHTML = `
+      <div class="trade-card ${action}">
+        ${tabsHtml}
+        ${body}
+        ${criticalEventsHtml}
+      </div>`;
+    // Re-attach tab click listeners
+    container.querySelectorAll('.strategy-tab').forEach(btn => {
+      btn.addEventListener('click', () => rebuild(btn.dataset.strategy));
+    });
+  }
+
+  // Render the chosen strategy first (or whichever is available)
+  const initial = (chosen === 'iron_condor' && condorTrade) ? 'iron_condor' :
+                  (calTrade ? 'calendar' : 'iron_condor');
+  rebuild(initial);
 }
 
 // Build the upcoming events timeline
